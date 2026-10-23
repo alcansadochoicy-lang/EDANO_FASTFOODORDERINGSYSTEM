@@ -7,8 +7,9 @@ package com.fastfood.model;
 public enum Role {
     CUSTOMER("Customer"),
     CASHIER("Cashier"),
-    KITCHEN_STAFF("Kitchen Staff"),
-    MANAGER("Manager");
+    KITCHEN("Kitchen Staff"),
+    MANAGER("Manager"),
+    ADMIN("Admin");
 
     private final String label;
 

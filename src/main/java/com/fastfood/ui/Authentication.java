@@ -114,8 +114,9 @@ public class Authentication {
         RoleMenu menu = switch (role) {
             case CUSTOMER -> new CustomerMenu(userDao, scanner, user);
             case CASHIER -> new CashierMenu(userDao, scanner, user);
-            case KITCHEN_STAFF -> new KitchenStaffMenu(userDao, scanner, user);
+            case KITCHEN -> new KitchenMenu(userDao, scanner, user);
             case MANAGER -> new ManagerMenu(userDao, scanner, user);
+            case ADMIN -> new AdminMenu(userDao, scanner, user);
         };
         menu.start();
     }

@@ -40,3 +40,4 @@ build/
 
 ### SQLite (generated at runtime) ###
 *.db
+.idea/
