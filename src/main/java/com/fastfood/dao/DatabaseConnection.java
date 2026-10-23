@@ -10,20 +10,19 @@ public final class DatabaseConnection {
 
     private DatabaseConnection() {}
 
+    /**
+     * Opens a new connection with foreign key enforcement turned on.
+     * SQLite disables foreign keys by default and the setting is per-connection,
+     * so the PRAGMA must run every time a connection is created.
+     */
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL);
-    }
-
-    public static void initializeDatabase() throws SQLException {
-        String sql = "CREATE TABLE IF NOT EXISTS users (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "username TEXT NOT NULL UNIQUE, " +
-                "password TEXT NOT NULL, " +
-                "roles TEXT NOT NULL CHECK (roles IN ('TEACHER', 'STUDENT')), " +
-                "status TEXT NOT NULL DEFAULT 'PENDING')";
-        try (Connection connection = getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute(sql);
+        Connection connection = DriverManager.getConnection(URL);
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("PRAGMA foreign_keys = ON;");
+        } catch (SQLException e) {
+            connection.close();
+            throw e;
         }
+        return connection;
     }
 }

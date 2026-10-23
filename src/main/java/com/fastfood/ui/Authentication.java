@@ -1,23 +1,26 @@
 package com.fastfood.ui;
 
+import com.fastfood.dao.DaoException;
 import com.fastfood.dao.UserDao;
+import com.fastfood.model.Role;
 import com.fastfood.model.User;
-import java.sql.SQLException;
 import java.util.Optional;
 import java.util.Scanner;
 
-public class Menu {
+/** Handles the startup menu: registration, login, and routing to the role-based menu. */
+public class Authentication {
     private final UserDao userDao;
-    private final Scanner scanner = new Scanner(System.in);
+    private final Scanner scanner;
 
-    public Menu(UserDao userDao) {
+    public Authentication(UserDao userDao, Scanner scanner) {
         this.userDao = userDao;
+        this.scanner = scanner;
     }
 
     public void start() {
         boolean running = true;
         while (running) {
-            System.out.println("\\n===== FAST FOOD ORDERING SYSTEM =====");
+            System.out.println("\n===== FAST FOOD ORDERING SYSTEM =====");
             System.out.println("1. Register Account");
             System.out.println("2. Login");
             System.out.println("3. Exit");
@@ -35,7 +38,7 @@ public class Menu {
     }
 
     private void register() {
-        System.out.println("\\n--- Register Account ---");
+        System.out.println("\n--- Register Account ---");
         System.out.print("Enter username: ");
         String username = scanner.nextLine().trim();
         System.out.print("Enter password: ");
@@ -45,31 +48,40 @@ public class Menu {
             return;
         }
 
-        System.out.println("Select role: 1. TEACHER  2. STUDENT");
-        System.out.print("Enter choice: ");
-        String role = switch (scanner.nextLine().trim()) {
-            case "1" -> "TEACHER";
-            case "2" -> "STUDENT";
-            default -> null;
-        };
+        Role role = selectRole();
         if (role == null) {
             System.out.println("Invalid role. Registration cancelled.");
             return;
         }
 
         try {
-            if (userDao.register(username, password, role)) {
+            if (userDao.register(username, password, role.name())) {
                 System.out.println("Account registered successfully. Status: PENDING");
             } else {
                 System.out.println("Username already exists. Please choose another.");
             }
-        } catch (SQLException e) {
-            System.out.println("Could not register account: " + e.getMessage());
+        } catch (DaoException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private Role selectRole() {
+        Role[] roles = Role.values();
+        System.out.println("Select role:");
+        for (int i = 0; i < roles.length; i++) {
+            System.out.println((i + 1) + ". " + roles[i].name());
+        }
+        System.out.print("Enter choice: ");
+        try {
+            int choice = Integer.parseInt(scanner.nextLine().trim());
+            return (choice >= 1 && choice <= roles.length) ? roles[choice - 1] : null;
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 
     private void login() {
-        System.out.println("\\n--- Login ---");
+        System.out.println("\n--- Login ---");
         System.out.print("Username: ");
         String username = scanner.nextLine().trim();
         System.out.print("Password: ");
@@ -81,37 +93,30 @@ public class Menu {
                 return;
             }
             User user = result.get();
-            System.out.println("\\nLogin successful! Welcome, " + user.username() + "!");
+            System.out.println("\nLogin successful! Welcome, " + user.username() + "!");
             System.out.println("Role: " + user.roles());
             System.out.println("Account status: " + user.status());
             if ("PENDING".equals(user.status())) {
                 System.out.println("Your account is pending approval.");
             }
-            loggedInMenu(user);
-        } catch (SQLException e) {
-            System.out.println("Could not log in: " + e.getMessage());
+            routeToMenu(user);
+        } catch (DaoException e) {
+            System.out.println(e.getMessage());
         }
     }
 
-    private void loggedInMenu(User user) {
-        boolean loggedIn = true;
-        while (loggedIn) {
-            System.out.println("\\n--- User Menu ---");
-            System.out.println("1. View Account");
-            System.out.println("2. Logout");
-            System.out.print("Choose an option: ");
-            switch (scanner.nextLine().trim()) {
-                case "1" -> {
-                    System.out.println("Username: " + user.username());
-                    System.out.println("Role: " + user.roles());
-                    System.out.println("Status: " + user.status());
-                }
-                case "2" -> {
-                    loggedIn = false;
-                    System.out.println("Logged out successfully.");
-                }
-                default -> System.out.println("Invalid choice. Please try again.");
-            }
+    private void routeToMenu(User user) {
+        Role role = Role.fromString(user.roles());
+        if (role == null) {
+            System.out.println("Unknown role '" + user.roles() + "'. Please contact an administrator.");
+            return;
         }
+        RoleMenu menu = switch (role) {
+            case CUSTOMER -> new CustomerMenu(userDao, scanner, user);
+            case CASHIER -> new CashierMenu(userDao, scanner, user);
+            case KITCHEN_STAFF -> new KitchenStaffMenu(userDao, scanner, user);
+            case MANAGER -> new ManagerMenu(userDao, scanner, user);
+        };
+        menu.start();
     }
 }
